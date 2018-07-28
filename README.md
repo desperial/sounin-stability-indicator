@@ -1,2 +1,6 @@
 # SoSI: Sounin Stability Indicator
-This Discord bot made for one specific server, to watch for one specific person. Do you REALY need this package?
+
+![Sounin Stability Indicator](https://image.ibb.co/cW2Hio/unknown.png)
+
+
+This bot is made for no serious reason but giggles and fun. You probably won't install it at all. I mean, realy: SoSI monitoring the specific person in a particular server.
