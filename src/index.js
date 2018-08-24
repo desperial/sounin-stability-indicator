@@ -1,69 +1,65 @@
 const Discord = require('discord.js');
 const sosi = new Discord.Client();
 const config = require('./config.json');
-const lines = require('./lines.json');
 const fs = require("fs");
-const leavingFixator = require('./bot/LeavingWatcher');
 const commands = require('./bot/Commands');
+
 
 sosi.login(config.token);
 
 sosi.on('ready', () => {
+  console.log('ready to serve!');
 
 });
 
-sosi.on('message', (message) => {
-
-  if (message.content.startsWith(config.prefix + "prefix")) {
-    let newPrefix = message.content.split(" ").slice(1, 2)[0];
-    config.prefix = newPrefix;
-    fs.writeFile("./src/config.json", JSON.stringify(config), (err) => console.error);
-    message.reply("Префикс изменен на " + newPrefix + " " + lineRandom(lines.prefixChange));
+sosi.on('message', async (message) => {
+  var command;
+  var commandInput;
+  var commandAction;
+  var commandParams;
+  if (message.content.startsWith(config.prefix)){
+    commandInput = message.content.split(config.prefix).slice(1)[0];
+    commandAction = commandInput.split(" ").slice(0)[0];
+    commandParams =  commandInput.split(" ").slice(1);
+    console.log(`
+      Author: ${message.author.username}
+      Time: ${message.createdAt}
+      Action: ${commandAction}
+      Params: ${commandParams}
+    `);
   }
-  if (message.content === config.prefix + 'check-last-leave') {
-    command = commands["check-last-leave"];
-    command.process(sosi,message,config.souninId);
-  } else if (message.content === config.prefix + 'statistic') {
-    command = commands["statistic"];
-    command.process(sosi,message,config.souninId);
-  } else if (message.content === config.prefix + 'update-stats') {
-    command = commands["update-statistic"];
-    command.process(sosi,message,config.souninId);
-  }else if (message.content === config.prefix + 'set-sounin-roles') {
-    const sounin = message.guild.members.get(config.souninId);
-    sounin.setRoles(config.souninRoles)
-      .then(console.log())
-      .catch(console.error);
-    message.reply("Соунин, получите Ваши роли и пройдите в камеру.");
+  if (commandAction){
+      command = Object.keys(commands).find((val)=>{
+      return val===commandAction
+    });
+    await commands[command].process(sosi,message,config.souninId,commandParams)
   }
-
 });
+
 sosi.on('guildMemberRemove', (member) => {
   if (member.id == config.souninId) {
     var souninJoined = member.joinedTimestamp;
     const daysSinceSouninLeft = Math.floor((Date.now() - souninJoined) / (1000 * 60 * 60 * 24));
     const jorniyal = sosi.channels.get(config.channelId);
-    let newLeave = new leavingFixator({
-      start: souninJoined,
-      end: Date.now(),
-    });
-    newLeave.save();
+    var newLeave = {
+      "start": souninJoined,
+      "end": Date.now(),
+    };
+    fs.writeFile('./src/last-leave.json', JSON.stringify(newLeave), (err) => console.error);
     jorniyal.send('Соунин продержался ' + daysSinceSouninLeft + ' дней и ливнул. Тимми, обновляй счетчик.', {
       files: ['https://media.giphy.com/media/rl0FOxdz7CcxO/giphy.gif']
     });
   }
 });
+
 sosi.on("guildMemberAdd", (member) => {
   if (member.id == config.souninId) {
     const jorniyal = sosi.channels.get(config.channelId);
-    jorniyal.send('Ой, смотрите-ка, кто вернулся!', {
-      files: ['https://cdn.discordapp.com/attachments/160365561631473665/472694579246923777/community_image_1408969951.gif']
+    jorniyal.send(`
+    Ой, смотрите-ка, кто вернулся!
+    Только знаешь, что? Мейда тебя встречать не будет. Ты её забрал.`, {
+      files: ['https://s1.ax1x.com/2018/06/25/PCYYiq.jpg']
     });
   }
 });
 
-function lineRandom(linesArray) {
-  randomizedIndex = Math.floor((Math.random() * linesArray.length));
-  console.log(linesArray.length, randomizedIndex, linesArray[randomizedIndex])
-  return linesArray[randomizedIndex];
-}
