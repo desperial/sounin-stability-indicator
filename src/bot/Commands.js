@@ -55,6 +55,8 @@ var commands = {
             
           }
         })
+
+        helpText += "Можете звездануть бота на GitHub: https://github.com/desperial/sounin-stability-indicator";
         return msg.channel.send(helpText, {code: 'markdown'})
       }else{
         Object.keys(commands).forEach((val,ind,array) => {
@@ -67,6 +69,7 @@ var commands = {
           helpText += `[${ind+1}]: ${config.prefix}${val} ${paramsHelp}\n`
           helpText += `${commands[val].description}\n\n`;
         });
+        helpText += "Можете звездануть бота на GitHub: https://github.com/desperial/sounin-stability-indicator";
         return msg.channel.send(helpText, {code: 'markdown'})
       }
     }
