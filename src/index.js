@@ -1,6 +1,7 @@
 const Discord = require('discord.js');
 const sosi = new Discord.Client();
 const config = require('./config.json');
+const lines = require('./lines.json');
 const fs = require("fs");
 const commands = require('./bot/Commands');
 
@@ -24,15 +25,25 @@ sosi.on('message', async (message) => {
     console.log(`
       Author: ${message.author.username}
       Time: ${message.createdAt}
-      Action: ${commandAction}
-      Params: ${commandParams}
+      Action: ${commandAction?commandAction:'<none>'}
+      Params: ${commandParams.length>0?commandParams:'<none>'}
     `);
   }
   if (commandAction){
       command = Object.keys(commands).find((val)=>{
       return val===commandAction
     });
-    await commands[command].process(sosi,message,config.souninId,commandParams)
+    try {
+      commands[command].process(sosi,message,config.souninId,commandParams)
+    }catch(err){
+        console.log('Command not fount');
+        message.reply('Нет такой команды. Если вы хотите её добавить... Ну, увы.')
+    }
+  }
+
+  //
+  if (message.content === 'Спасибо, бот.') {
+    message.reply(lineRandom(lines.urWelcome));
   }
 });
 
@@ -63,3 +74,8 @@ sosi.on("guildMemberAdd", (member) => {
   }
 });
 
+function lineRandom(linesArray) {
+  randomizedIndex = Math.floor((Math.random() * linesArray.length));
+  console.log(linesArray.length, randomizedIndex, linesArray[randomizedIndex])
+  return linesArray[randomizedIndex];
+}
