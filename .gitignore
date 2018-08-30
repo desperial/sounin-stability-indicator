@@ -62,3 +62,6 @@ typings/
 
 # configurations
 src/config.json
+
+leaves
+eva_nicnames
