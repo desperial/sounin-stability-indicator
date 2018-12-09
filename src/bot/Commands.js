@@ -2,10 +2,14 @@ const Discord = require('discord.js');
 const sosi = new Discord.Client();
 const config = require('../config.json');
 const lines = require('../lines.json');
+const opus = require('node-opus');
+const http = require('http');
 const fs = require("fs");
 const snekfetch = require('snekfetch');
 const lastLeave = require('../last-leave.json');
 const Trello = require("node-trello");
+const curl = require("curl");
+
 
 const trelloController = new Trello(config.trelloApi, config.trelloToken);
 
@@ -100,6 +104,29 @@ var commands = {
     }
   },
 
+  "answer":{
+    hidden: true,
+    process: (bot, msg, souninId, params)=>{
+      const channel = bot.channels.get(config.channelId);
+      const id = params[0];
+      params.splice(0,1,id==='none'?null:`<@${id}>`)
+      const answer = params.join(' ')
+      channel.send(answer);
+    }
+  },
+
+  "set-sounin-roles":{
+    descriptionShort: "Выдать роли Соунину",   
+    description: "Выдает Соунину роли, которые у него были.",
+    process: (bot, msg, souninId, params)=>{
+       const sounin = msg.guild.members.get(souninId);
+       config.souninRoles.forEach((val,ind,arr)=>{
+        sounin.addRole(val)
+       })
+      msg.channel.send(lineRandom(lines.souninRolesSet));
+    }
+  },
+
   "prefix":{
     descriptionShort: "смена префикса",   
     description: "Меняет префикс бота.",
@@ -118,6 +145,35 @@ var commands = {
     }
   },
   
+  // "tts-rukki":{
+  //   process: async (bot, msg, souninId, params)=>{
+  //     if(msg.author.id!==`170447260939714560`){
+  //       msg.reply(`Вам нельзя использовать данную команду!`)
+  //     }else{
+  //       var channel = msg.member.voiceChannel
+  //       if(!channel){
+  //         return msg.reply('Вы не находитесь в голосовом канале.')
+  //       }
+  //       const connection = await channel.join();
+  //       var url = IBMSpeechRequest();
+  //       console.log(url)
+
+  //       var streamOptions = {
+  //         volume:2,
+  //         passes:5,
+  //         bitrate:64
+  //       }
+  //       var dispatcher = connection.playArbitraryInput(url, streamOptions)
+  //       dispatcher.on('speaking', (value)=>{
+  //       })
+  
+  //       dispatcher.on('end', (reason)=>{
+  //         channel.leave()
+  //       })
+  //     }
+  //   }
+  // },
+
   "check-last-leave":{
     description:`Выводит последний таймстамп лива Соунина по часовому поясу +5 GMT и количество дней, которые он продержался. Почему, скажем, не по МСК?
      \"*Это потому что в жоже не было станда про часовые пояса или про Гринвич*\" (С) Pickleman.`,
@@ -249,78 +305,92 @@ var commands = {
     }
   },
 
-  "tts":{
-    descriptionShort: "Сказануть фразу в войс-чате",
-    description:"Бот заходит в войс-канал, в котором Вы находитесь во время исполнения команды, говорит реквестированную фразу и покидает канал.",
-    params:{
-      "text":{
-        description:"Текст, который скажет бот прямо в войс-чат.",
-        required:true
-      },
-      "-g|-n|-e":{
-        description:"флаг эмоционального окраса чтения TTS. **g**ood, **n**eutral, **e**vil. По-умолчанию -n",
-        required:false
-      }
-    },
-    process: async (bot,msg,souninId, params)=>{
+  // "tts":{
+  //   descriptionShort: "Сказануть фразу в войс-чате",
+  //   description:"Бот заходит в войс-канал, в котором Вы находитесь во время исполнения команды, говорит реквестированную фразу и покидает канал.",
+  //   params:{
+  //     "text":{
+  //       description:"Текст, который скажет бот прямо в войс-чат.",
+  //       required:true
+  //     },
+  //     "-g|-n|-e":{
+  //       description:"флаг эмоционального окраса чтения TTS. **g**ood, **n**eutral, **e**vil. По-умолчанию -n",
+  //       required:false
+  //     }
+  //   },
+  //   process: (bot,msg,souninId, params)=>{
       
-      if(params.length>0){
-        const emotionFlag = params.find((val,ind,arr) => { 
-          if(val === '-g' || val === '-e' || val === '-n'){
-            params.splice(ind, 1);
-            return val;
-          }
-        })
+  //     if(params.length>0){
+  //       const emotionFlag = params.find((val,ind,arr) => { 
+  //         if(val === '-g' || val === '-e' || val === '-n'){
+  //           params.splice(ind, 1);
+  //           return val;
+  //         }
+  //       })
 
-        var emotion = 'neutral'
-        if(emotionFlag){
-          switch (emotionFlag){
+  //       var emotion = 'neutral'
+  //       if(emotionFlag){
+  //         switch (emotionFlag){
 
-            case '-g': 
-              emotion = 'good';
-              break
+  //           case '-g': 
+  //             emotion = 'good';
+  //             break
             
-            case '-n': 
-              emotion = 'neutral';
-              break
+  //           case '-n': 
+  //             emotion = 'neutral';
+  //             break
 
-            case '-e': 
-              emotion = 'evil';
-              break
+  //           case '-e': 
+  //             emotion = 'evil';
+  //             break
 
-          }
-        }
-        var textToSpeech
-        params.length>0
-          ?textToSpeech = params.join(' ')
-          :msg.reply('Текста не осталось. Вы что же, ввели только флаг?');
+  //         }
+  //       }
+  //       var textToSpeech
+  //       params.length>0
+  //         ?textToSpeech = params.join(' ')
+  //         :msg.reply('Текста не осталось. Вы что же, ввели только флаг?');
 
-        var channel = msg.member.voiceChannel
-        if(!channel){
-          return msg.reply('Вы не находитесь в голосовом канале.')
-        }
-        const connection = await channel.join();
-        var url = ySpeechRequest(textToSpeech,emotion);
-        console.log(url)
+  //       var channel = msg.member.voiceChannel
+  //       if(!channel){
+  //         return msg.reply('Вы не находитесь в голосовом канале.')
+  //       }
+  //       var url = ySpeechRequest(textToSpeech,emotion);
+  //         console.log(url)
+          
+  //         download(url, __dirname, function(err){
+  //           if(err){
+  //             console.error(err);
+  //           }else{
+  //             console.log("Download complete");
+  //           }
+  //        });
+  //       channel.join().then(connection=>{
+          
+  //         console.log("debug1")
+  //         var streamOptions = {
+  //           volume:1,
+  //           passes: 10,
+  //           bitrate: 64000,
+  //         }
+  //         console.log("debug2")
+  //         const dispatcher = connection.playStream(fs.createReadStream(__dirname+'/file.wav'),streamOptions);
+  //         dispatcher.on('speaking', (value)=>{
+  //           console.log("debug4")
+  //         })
+    
+  //         dispatcher.on('end', (reason)=>{
+  //           console.log(reason)
+  //           channel.leave()
+  //         })
+  //       });
+        
 
-        var streamOptions = {
-          volume:2,
-          passes:5,
-          bitrate:64
-        }
-        var dispatcher = connection.playArbitraryInput(url, streamOptions)
-        dispatcher.on('speaking', (value)=>{
-        })
-  
-        dispatcher.on('end', (reason)=>{
-          channel.leave()
-        })
-
-      }else{
-        msg.reply('Текста совершенно нет!');
-      }
-    }
-  },
+  //     }else{
+  //       msg.reply('Текста совершенно нет!');
+  //     }
+  //   }
+  // },
 
   "test":{
     descriptionShort: "Пройди тест \"Кто ты из таверны <<Розовый Дилдоэзреаль?>>.\"",
@@ -388,6 +458,10 @@ var commands = {
           };
 
           trelloController.post('/1/cards', newCard, function (err, data) {
+            if(err){
+              return msg.reply(`Произошла ошибка!`)
+            }
+            msg.reply(`Карточка ${data.name} была добавлена. Вы можете посмотреть её по адресу ${data.url}`)
             console.log(data);
           });
       }else{
@@ -412,8 +486,22 @@ async function giphyApi(query) {
 }
 
 function ySpeechRequest(text, emotion){
-  text += text.substring(0,7)
-  return encodeURI(`https://tts.voicetech.yandex.net/generate?key=${config.yaSpeechKit}&text=${text}&format=wav&quality=hi&lang=ru-RU&speaker=ermil&speed=1&emotion=${emotion}`)
+  // text += text.substring(0,(text.length/2))
+  return encodeURI(`http://tts.voicetech.yandex.net/generate?key=${config.yaSpeechKit}&text=${text}&format=opus&quality=hi&lang=ru-RU&speaker=ermil&speed=1&emotion=${emotion}`)
+}
+function download(url, dest, callback) {
+  var file = fs.createWriteStream(dest+'/file.wav');
+  var request = http.get(url, function (response) {
+    response.pipe(file);
+  file.on('finish', function () {
+  file.close(callback); // close() is async, call callback after close completes.
+});
+    file.on('error', function (err) {
+      fs.unlink(dest); // Delete the file async. (But we don't check the result)
+      if (callback)
+        callback(err.message);
+    });
+  });
 }
 
 module.exports = commands
