@@ -61,7 +61,5 @@ typings/
 .next
 
 # configurations
-src/config.json
 
-leaves
-eva_nicnames
+leaves/
