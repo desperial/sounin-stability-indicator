@@ -14,7 +14,7 @@ var goodmorning = new CronJob('0 0 7 * * *', function() {
 
 var http = require('http');
  
-var port = 8081;
+var port = process.env.PORT || 3000;
  
 var s = http.createServer();
 s.on('request', function(request, response) {
